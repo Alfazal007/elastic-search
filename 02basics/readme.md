@@ -106,3 +106,37 @@ curl --cacert http_ca.crt -u elastic:q+X7Gzuj4tvOmDtSu6RK -H "Content-Type: appl
 { "id": "1924", "title" : "Plan 9 from Outer Space", "year":1959 , "genre":["Horror", "Sci-Fi"] }
 ```
 
+
+
+
+### Updating Documents
+
+In Elasticsearch, you **cannot** update documents directly. Instead, Elasticsearch creates a new version of the document, increments its version number, and deletes the old version asynchronously.
+
+#### Full Document Replacement
+```sh
+curl -X POST https://127.0.0.1:9200/movies/_doc/109487 -d '{
+    "genre": ["IMAX", "Sci-Fi"],
+    "title": "Inter fooerrrrr",
+    "year": 2014
+}'
+```
+
+#### Partial Update
+```sh
+curl -X POST https://127.0.0.1:9200/movies/_update/109487 -d '{
+    "doc": {"genre": ["IMAX", "yoyo"]}
+}'
+```
+
+
+
+### Deleting Documents
+
+Make a delete request here
+https://127.0.0.1:9200/movies/_doc/109487
+
+
+### Concurrency
+
+This is handled via sequence number and _primary_term use retry on conflict.
