@@ -84,6 +84,70 @@ curl --cacert http_ca.crt -u elastic:$ELASTIC_PASSWORD \
 
 ---
 
+
+
+## 4. Documents and Indices
+Documents are equivalent to rows in the database.
+Indices are equivalent to tables in the database.
+The data is stored in the form of inverted indices.
+
+### Example:
+```
+Doc1: "Hi, this is me".
+Doc2: "Hi, I am me".
+```
+
+In Elasticsearch, the above data is stored in this form:
+```
+Hi: Doc1, Doc2
+this: Doc1
+is: Doc1
+me: Doc1, Doc2
+I: Doc2
+am: Doc2
+```
+
+Internally, Elasticsearch applies optimizations to improve search relevance and performance.
+
+---
+
+## 5. Internals
+- **Shards** are instances of Lucene.
+- An **index (table)** is split into multiple shards.
+- Shards are distributed across multiple computers in a network.
+- Each shard may reside on a different node in a cluster.
+- **Documents (rows)** are hashed to specific shards.
+
+### Nodes and Shards
+- A **node** is an installation of Elasticsearch.
+- Each index can have **2 primary shards** and **2 replica shards** (configurable).
+- Shards are distributed across nodes in a cluster.
+- **Write requests** go to the primary shard.
+- **Read requests** go to either the primary or a replica shard.
+- More replicas increase **read throughput**.
+- The number of **primary shards** must be configured upfront and **cannot be changed** after creation.
+
+### Example Configuration
+```sh
+PUT /testindex
+{
+  "settings": {
+    "number_of_shards": 3,
+    "number_of_replicas": 1
+  }
+}
+```
+- In this setup:
+  - **3 primary shards**.
+  - **1 replica per primary shard**.
+  - **Total shards = 6 (3 primary + 3 replicas)**.
+
+### Updating Write Configuration
+- If you need to **update writes**, you must **reindex your data**.
+
+---
+
+
 ## Additional Resources
 - [Elasticsearch Documentation](https://www.elastic.co/guide/en/elasticsearch/reference/current/index.html)
 - [Kibana](https://www.elastic.co/kibana) for visualization and management
