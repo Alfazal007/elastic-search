@@ -140,3 +140,126 @@ https://127.0.0.1:9200/movies/_doc/109487
 ### Concurrency
 
 This is handled via sequence number and _primary_term use retry on conflict.
+
+
+Searching
+
+Use analyzers to define mappings 
+If analyzer is keyword type then it is an exact match, i.e. case-sensitive as well.
+If analyzer is text type then it is not exact match, you can add analyzers on top of it like case insensitiveness, stemming,
+stopwords removal(it, and, the,...).
+
+
+Create a new mapping:
+A put request to https://127.0.0.1:9200/movies
+{
+    "mappings": {
+        "properties": {
+            "id": {"type": "integer"},
+            "year": {"type": "date"},
+            "genre": {"type": "keyword"},
+            "title": 
+            {
+                "type": "text", 
+                "analyzer": "english"
+            }
+        }
+    }
+}
+
+Now, no analyzers will be run on genre field.
+Title will have analyzers, giving english will give synonyms to english language.
+
+Put data into it,
+
+curl --cacert http_ca.crt -u elastic:FnPD3RrchiJgbfYi=kF3 -H "Content-Type: application/json" -XPUT https://127.0.0.1:9200/_bulk?pretty --data-binary @movies.json
+
+
+Now try searching:
+https://127.0.0.1:9200/movies/_search
+
+
+{ 
+    "query": {
+        "match_phrase": {
+            "genre": "sci"
+        }
+    }
+}
+
+This will return nothing
+Because sci is not run with analyzers
+
+But, 
+
+
+This will return some results
+{ 
+    "query": {
+        "match_phrase": {
+            "genre": "Sci-Fi"
+        }
+    }
+}
+
+### Data Modeling
+Sometimes, having data replication to reduce the number of queries can be a good trade-off. In some cases, denormalizing the data is beneficial.
+
+### Parent-Child Mappings
+#### Create a New Mapping
+```sh
+curl -X PUT "https://127.0.0.1:9200/series" -H "Content-Type: application/json" -d '{
+    "mappings": {
+        "properties": {
+            "film_to_franchise": {
+                "type": "join",
+                "relations": {
+                    "franchise": "film"
+                }
+            }
+        }
+    }
+}'
+```
+
+Here, **franchise** is the parent, and **film** is the child.
+
+#### Inserting Documents
+```json
+{ "create" : { "_index" : "series", "_id" : "1", "routing" : 1} }
+{ "id": "1", "film_to_franchise": {"name": "franchise"}, "title" : "Star Wars" }
+{ "create" : { "_index" : "series", "_id" : "260", "routing" : 1} }
+{ "id": "260", "film_to_franchise": {"name": "film", "parent": "1"}, "title" : "Star Wars: Episode IV - A New Hope", "year":"1977", "genre":["Action", "Adventure", "Sci-Fi"] }
+```
+
+#### Retrieve All Films of a Franchise
+```sh
+curl -X GET "https://127.0.0.1:9200/series/_search" -H "Content-Type: application/json" -d '{
+    "query": {
+        "has_parent": {
+            "parent_type": "franchise",
+            "query": {
+                "match": {
+                    "title": "Star Wars"
+                }
+            }
+        }
+    }
+}'
+```
+
+### Flattened Data Types
+Flattened datatypes map inner fields under one parent flattened field.
+```sh
+curl -X PUT "http://127.0.0.1:9200/demo-flattened/_mapping" -H "Content-Type: application/json" -d '{
+  "properties": {
+    "host": {
+      "type": "flattened"
+    }
+  }
+}'
+```
+
+### Mapping Process
+- **Explicit**: Define datatypes upfront.
+- **Dynamic**: Elasticsearch infers datatypes automatically.
